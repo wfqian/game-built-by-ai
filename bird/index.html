@@ -1,0 +1,1865 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>箭雨鸟 - Arrow Dodge Bird</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@700;900&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #0d1117;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      font-family: 'Nunito', sans-serif;
+      overflow: hidden;
+    }
+
+    #gameWrapper {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    #ui {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+    }
+
+    /* Overlay screens */
+    .screen {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border-radius: 16px;
+      transition: opacity 0.4s ease;
+    }
+
+    .screen.hidden { opacity: 0; pointer-events: none; }
+
+    #startScreen {
+      background: linear-gradient(180deg, rgba(10,18,40,0.92) 0%, rgba(5,10,25,0.95) 100%);
+    }
+
+    #gameOverScreen {
+      background: linear-gradient(180deg, rgba(80,10,10,0.92) 0%, rgba(15,5,5,0.95) 100%);
+    }
+
+    .game-title {
+      font-size: 46px;
+      font-weight: 900;
+      color: #fff;
+      text-shadow: 0 0 20px rgba(255,200,50,0.8), 0 2px 4px rgba(0,0,0,0.8);
+      letter-spacing: 2px;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+
+    .sub-title {
+      font-size: 18px;
+      color: rgba(255,220,100,0.85);
+      margin-bottom: 40px;
+      text-align: center;
+    }
+
+    .btn {
+      padding: 16px 48px;
+      font-size: 22px;
+      font-weight: 900;
+      font-family: 'Nunito', sans-serif;
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      pointer-events: all;
+      transition: all 0.18s ease;
+      letter-spacing: 1px;
+    }
+
+    .btn-start {
+      background: linear-gradient(135deg, #f9c74f, #f3722c);
+      color: #1a0a00;
+      box-shadow: 0 6px 24px rgba(249,199,79,0.5);
+    }
+
+    .btn-start:hover {
+      transform: translateY(-3px) scale(1.05);
+      box-shadow: 0 10px 30px rgba(249,199,79,0.7);
+    }
+
+    .btn-start:active { transform: scale(0.97); }
+
+    .score-display {
+      font-size: 62px;
+      font-weight: 900;
+      color: #fff;
+      text-shadow: 0 0 20px rgba(255,100,100,0.8);
+      margin-bottom: 6px;
+    }
+
+    .score-label {
+      font-size: 20px;
+      color: rgba(255,170,170,0.8);
+      margin-bottom: 8px;
+    }
+
+    .best-score {
+      font-size: 18px;
+      color: #f9c74f;
+      margin-bottom: 40px;
+    }
+
+    .instructions {
+      color: rgba(180,200,255,0.7);
+      font-size: 15px;
+      text-align: center;
+      line-height: 1.8;
+      margin-bottom: 32px;
+    }
+
+    .instructions span { color: #7dd3fc; font-weight: 700; }
+
+    /* HUD score */
+    #hud {
+      position: absolute;
+      top: 18px;
+      left: 0; right: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 24px;
+    }
+
+    #scoreHud {
+      font-size: 38px;
+      font-weight: 900;
+      color: #fff;
+      text-shadow: 0 2px 12px rgba(0,0,0,0.6), 0 0 20px rgba(255,220,80,0.4);
+    }
+
+    #livesHud {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 3px;
+    }
+
+    #livesLabel {
+      font-size: 11px;
+      font-weight: 700;
+      color: rgba(255,160,160,0.85);
+      letter-spacing: 1px;
+    }
+
+    #livesBar {
+      display: flex;
+      gap: 3px;
+    }
+
+    .hp-seg {
+      width: 14px;
+      height: 14px;
+      border-radius: 3px;
+      border: 1.5px solid rgba(255,255,255,0.2);
+      transition: background 0.15s;
+    }
+
+    .hp-seg.full  { background: linear-gradient(135deg,#ff6b6b,#e53935); box-shadow: 0 0 5px rgba(255,80,80,0.6); }
+    .hp-seg.empty { background: rgba(60,30,30,0.6); }
+
+    /* Skill HUD */
+    #skillHud {
+      display: flex;
+      flex-direction: row;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .skill-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+    }
+
+    .skill-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .sl-1 { color: rgba(255,220,80,0.85); }
+    .sl-2 { color: rgba(255,100,150,0.85); }
+
+    .skill-bar-wrap {
+      width: 64px;
+      height: 10px;
+      background: rgba(255,255,255,0.12);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .sbw-1 { border: 1px solid rgba(255,220,80,0.3); }
+    .sbw-2 { border: 1px solid rgba(255,100,150,0.3); }
+
+    .skill-bar {
+      height: 100%;
+      width: 100%;
+      border-radius: 8px;
+      transition: width 0.1s linear;
+    }
+
+    .skill-ready {
+      font-size: 12px;
+      font-weight: 900;
+      animation: pulse-skill 0.8s ease-in-out infinite;
+    }
+    .sr-1 { color: #f9c74f; text-shadow: 0 0 8px rgba(249,199,79,0.8); }
+    .sr-2 { color: #ff88aa; text-shadow: 0 0 8px rgba(255,136,170,0.8); }
+
+    @keyframes pulse-skill {
+      0%,100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.7; transform: scale(1.1); }
+    }
+
+    .bird-emoji {
+      font-size: 80px;
+      margin-bottom: 12px;
+      filter: drop-shadow(0 0 12px rgba(255,220,80,0.7));
+      animation: float 2s ease-in-out infinite;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-12px); }
+    }
+
+    .go-icon {
+      font-size: 70px;
+      margin-bottom: 12px;
+      animation: shake 0.5s ease-in-out;
+    }
+
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      20%,60% { transform: translateX(-8px); }
+      40%,80% { transform: translateX(8px); }
+    }
+  </style>
+</head>
+<body>
+<div id="gameWrapper">
+  <canvas id="gameCanvas"></canvas>
+
+  <div id="ui">
+    <!-- HUD -->
+    <div id="hud" class="hidden">
+      <div id="livesHud">
+        <div id="livesLabel">HP</div>
+        <div id="livesBar"></div>
+      </div>
+      <div id="scoreHud">0</div>
+      <div id="skillHud">
+        <div class="skill-col">
+          <div class="skill-label sl-1">⚡ 无敌 [E]</div>
+          <div class="skill-bar-wrap sbw-1"><div id="skillBar" class="skill-bar"></div></div>
+          <div id="skillReady" class="skill-ready sr-1 hidden">✨ 就绪!</div>
+        </div>
+        <div class="skill-col">
+          <div class="skill-label sl-2">🩸 汲血 [Q]</div>
+          <div class="skill-bar-wrap sbw-2"><div id="skill2Bar" class="skill-bar"></div></div>
+          <div id="skill2Ready" class="skill-ready sr-2 hidden">✨ 就绪!</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Start Screen -->
+    <div class="screen" id="startScreen">
+      <div class="bird-emoji">🐦</div>
+      <div class="game-title">箭雨鸟</div>
+      <div class="sub-title">Arrow Dodge Bird</div>
+      <div class="instructions">
+        弓箭手从两侧向你射箭，躲开它们！<br/>
+        <span>空格 / 点击</span> 向上飞 &nbsp;｜&nbsp; <span>← → / A D</span> 左右移动<br/>
+        吃掉食物可以回复❤️生命值 &nbsp;｜&nbsp; <span>E键</span> 激活无敌 &nbsp;｜&nbsp; <span>Q键</span> 激活汲血（吸收箭矢伤害转为生命）<br/>
+        ⚡ 闪电 &nbsp;｜&nbsp; 🌑 黑夜 &nbsp;｜&nbsp; 💨 大风 &nbsp;｜&nbsp; 🧲 磁力 &nbsp;｜&nbsp; ☄️ 陨石 &nbsp;｜&nbsp; 🔥 火坑 等随机事件会突然发生！
+      </div>
+      <button class="btn btn-start" id="startBtn">🎮 开始游戏</button>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div class="screen hidden" id="gameOverScreen">
+      <div class="go-icon">💥</div>
+      <div class="score-label">存活得分</div>
+      <div class="score-display" id="finalScore">0</div>
+      <div class="best-score" id="bestScore">最高分: 0</div>
+      <button class="btn btn-start" id="restartBtn">🔄 再来一次</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
+  let W = window.innerWidth;
+  let H = window.innerHeight;
+  canvas.width = W;
+  canvas.height = H;
+
+  window.addEventListener('resize', () => {
+    W = window.innerWidth;
+    H = window.innerHeight;
+    canvas.width = W;
+    canvas.height = H;
+  });
+
+  // ─── State ───────────────────────────────────────────────────────────────
+  let state = 'start'; // 'start' | 'playing' | 'gameover'
+  let score = 0;
+  let bestScore = 0;
+  let lives = 3;
+  let frameCount = 0;
+  let animId = null;
+  let lastTime = 0;
+
+  // ─── Input ───────────────────────────────────────────────────────────────
+  let jumpQueued = false;
+  const keys = { left: false, right: false };
+
+  // ─── Bird ────────────────────────────────────────────────────────────────
+  const BIRD = {
+    x: W / 2,
+    y: H / 2,
+    vx: 0,
+    vy: 0,
+    radius: 18,
+    GRAVITY: 0.45,
+    JUMP: -10,
+    MAX_VY: 14,
+    MAX_VX: 6,
+    ACCEL: 0.6,
+    FRICTION: 0.82,
+    invincible: 0,   // frames of post-hit invincibility
+    skillActive: 0,  // frames of skill invincibility
+    skill2Active: 0, // frames of absorption skill
+  };
+
+  function resetBird() {
+    BIRD.x = W / 2;
+    BIRD.y = H / 2;
+    BIRD.vx = 0;
+    BIRD.vy = 0;
+    BIRD.invincible = 0;
+    BIRD.skillActive = 0;
+    BIRD.skill2Active = 0;
+  }
+
+  // ─── Skill ───────────────────────────────────────────────────────────────
+  const SKILL_DURATION   = 300; // frames (~5 sec at 60fps)
+  const SKILL_COOLDOWN   = 1200; // frames (~20 sec)
+  const SKILL2_DURATION  = 300; // frames (~5 sec)
+  const SKILL2_COOLDOWN  = 1800; // frames (~30 sec)
+  let skillCooldown = 0;
+  let skill2Cooldown = 0;
+
+  function activateSkill(type = 1) {
+    if (state !== 'playing') return;
+    if (type === 1) {
+      if (skillCooldown > 0 || BIRD.skillActive > 0) return;
+      BIRD.skillActive = SKILL_DURATION;
+      skillCooldown = SKILL_COOLDOWN;
+      spawnParticles(BIRD.x, BIRD.y, 'rgba(255,220,50,', 20);
+    } else if (type === 2) {
+      if (skill2Cooldown > 0 || BIRD.skill2Active > 0) return;
+      BIRD.skill2Active = SKILL2_DURATION;
+      skill2Cooldown = SKILL2_COOLDOWN;
+      spawnParticles(BIRD.x, BIRD.y, 'rgba(255,100,150,', 20);
+    }
+  }
+
+  function updateSkill() {
+    if (BIRD.skillActive > 0) {
+      BIRD.skillActive--;
+      if (frameCount % 4 === 0) {
+        spawnParticles(BIRD.x + (Math.random()-0.5)*30, BIRD.y + (Math.random()-0.5)*30, 'rgba(255,220,50,', 3);
+      }
+    }
+    if (BIRD.skill2Active > 0) {
+      BIRD.skill2Active--;
+      if (frameCount % 4 === 0) {
+        spawnParticles(BIRD.x + (Math.random()-0.5)*30, BIRD.y + (Math.random()-0.5)*30, 'rgba(255,100,150,', 3);
+      }
+    }
+    if (skillCooldown > 0) skillCooldown--;
+    if (skill2Cooldown > 0) skill2Cooldown--;
+
+    updateSkillHud();
+  }
+
+  function updateSkillHud() {
+    const bar  = document.getElementById('skillBar');
+    const rdy  = document.getElementById('skillReady');
+    if (BIRD.skillActive > 0) {
+      bar.style.width = (BIRD.skillActive / SKILL_DURATION * 100) + '%';
+      bar.style.background = 'linear-gradient(90deg,#ffe066,#ffd700)';
+      rdy.classList.add('hidden');
+    } else if (skillCooldown > 0) {
+      bar.style.width = ((SKILL_COOLDOWN - skillCooldown) / SKILL_COOLDOWN * 100) + '%';
+      bar.style.background = 'linear-gradient(90deg,#f9c74f,#f3722c)';
+      rdy.classList.add('hidden');
+    } else {
+      bar.style.width = '100%';
+      bar.style.background = 'linear-gradient(90deg,#f9c74f,#f3722c)';
+      rdy.classList.remove('hidden');
+    }
+
+    const bar2  = document.getElementById('skill2Bar');
+    const rdy2  = document.getElementById('skill2Ready');
+    if (BIRD.skill2Active > 0) {
+      bar2.style.width = (BIRD.skill2Active / SKILL2_DURATION * 100) + '%';
+      bar2.style.background = 'linear-gradient(90deg,#ffb3c6,#ff6b8b)';
+      rdy2.classList.add('hidden');
+    } else if (skill2Cooldown > 0) {
+      bar2.style.width = ((SKILL2_COOLDOWN - skill2Cooldown) / SKILL2_COOLDOWN * 100) + '%';
+      bar2.style.background = 'linear-gradient(90deg,#e53935,#b71c1c)';
+      rdy2.classList.add('hidden');
+    } else {
+      bar2.style.width = '100%';
+      bar2.style.background = 'linear-gradient(90deg,#e53935,#b71c1c)';
+      rdy2.classList.remove('hidden');
+    }
+  }
+
+  // ─── Food ────────────────────────────────────────────────────────────────
+  const FOOD_BIG   = ['🍎','🍗','🍑'];  // big: +3 HP
+  const FOOD_SMALL = ['🍬','🍇','🌽'];  // small: +1 HP
+  let foods = [];
+  let nextFoodFrame = 180;
+
+  function spawnFood() {
+    const big = Math.random() < 0.3;   // 30% big
+    foods.push({
+      x: 80 + Math.random() * (W - 160),
+      y: 60 + Math.random() * (H - 120),
+      big,
+      emoji: big
+        ? FOOD_BIG[Math.floor(Math.random()   * FOOD_BIG.length)]
+        : FOOD_SMALL[Math.floor(Math.random() * FOOD_SMALL.length)],
+      heal: big ? 3 : 1,
+      r:    big ? 26 : 16,            // collision radius
+      fs:   big ? 38 : 22,            // font size px
+      life: 360 + Math.random() * 240,
+      bob:  Math.random() * Math.PI * 2,
+    });
+  }
+
+  function drawFood() {
+    const t = Date.now() / 600;
+    foods.forEach(f => {
+      const bobY = Math.sin(t + f.bob) * 5;
+      ctx.save();
+      ctx.shadowBlur = f.big ? 26 : 14;
+      ctx.shadowColor = f.big ? 'rgba(255,200,80,0.8)' : 'rgba(100,255,120,0.7)';
+      ctx.globalAlpha = Math.min(1, f.life / 60);
+      ctx.font = `${f.fs}px serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(f.emoji, f.x, f.y + bobY);
+      // Ring
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = Math.min(0.5, f.life / 120);
+      ctx.beginPath();
+      ctx.arc(f.x, f.y + bobY, f.r + 2, 0, Math.PI * 2);
+      ctx.strokeStyle = f.big ? 'rgba(255,200,80,0.6)' : 'rgba(100,255,120,0.5)';
+      ctx.lineWidth = f.big ? 3 : 2;
+      ctx.stroke();
+      // 「大」 badge for big food
+      if (f.big) {
+        ctx.globalAlpha = Math.min(0.9, f.life / 60);
+        ctx.font = 'bold 11px Nunito,sans-serif';
+        ctx.fillStyle = '#ffe066';
+        ctx.shadowBlur = 4;
+        ctx.shadowColor = '#f3722c';
+        ctx.fillText('+3❤', f.x, f.y + bobY + f.r + 10);
+      }
+      ctx.restore();
+    });
+  }
+
+  // food that is falling needs its own y update
+  function updateFood() {
+    if (frameCount >= nextFoodFrame) {
+      spawnFood();
+      nextFoodFrame = frameCount + 240 + Math.floor(Math.random() * 180);
+    }
+    foods = foods.filter(f => {
+      f.life--;
+      if (f.life <= 0) return false;
+      // Falling food moves downward
+      if (f.falling) {
+        f.y += f.vy;
+        if (f.y > H + 40) return false;
+      }
+      const dx = f.x - BIRD.x, dy = f.y - BIRD.y;
+      if (Math.sqrt(dx*dx + dy*dy) < BIRD.radius + f.r) {
+        const gained = Math.min(f.heal, MAX_LIVES - lives);
+        if (gained > 0) { lives += gained; updateLivesHud(); }
+        spawnParticles(f.x, f.y, f.big ? 'rgba(255,200,80,' : 'rgba(100,255,120,', 16);
+        showFloatText(f.x, f.y, `+${f.heal} ❤️`, f.big ? '#ffe066' : '#7fff7f');
+        return false;
+      }
+      return true;
+    });
+  }
+
+  // ─── Floating text ────────────────────────────────────────────────────────
+  let floatTexts = [];
+
+  function showFloatText(x, y, text, color) {
+    floatTexts.push({ x, y, text, color, life: 1, vy: -1.5 });
+  }
+
+  function updateDrawFloatTexts() {
+    floatTexts = floatTexts.filter(ft => {
+      ft.y += ft.vy;
+      ft.life -= 0.02;
+      if (ft.life <= 0) return false;
+      ctx.save();
+      ctx.globalAlpha = ft.life;
+      ctx.font = 'bold 20px Nunito, sans-serif';
+      ctx.fillStyle = ft.color;
+      ctx.textAlign = 'center';
+      ctx.shadowBlur = 8;
+      ctx.shadowColor = ft.color;
+      ctx.fillText(ft.text, ft.x, ft.y);
+      ctx.restore();
+      return true;
+    });
+  }
+
+  // ─── Arrows ──────────────────────────────────────────────────────────────
+  let arrows = [];
+  let nextArrowFrame = 0;
+
+  function spawnSingleArrow(fromLeft) {
+    const t = frameCount / 3600;
+    const roll = Math.random();
+    const kill   = roll < 0.02;
+    const cannon = !kill && roll < 0.10;
+    const big    = !kill && !cannon && roll < 0.35;
+    const x = fromLeft ? -10 : W + 10;
+    const aimY = BIRD.y + (Math.random() - 0.5) * 120;
+    const baseSpeed = kill ? 8.0 : cannon ? 2.5 : big ? 3.5 : 5.0;
+    const speed = baseSpeed + t * 1.2 + Math.random() * 2;
+    const angle = Math.atan2(aimY - H / 2, fromLeft ? W : -W) + (Math.random() - 0.5) * 0.5;
+    const vx = Math.cos(angle) * speed * (fromLeft ? 1 : -1);
+    const vy = Math.sin(angle) * speed;
+    arrows.push({
+      x, y: H / 2 + (Math.random() - 0.5) * H * 0.5,
+      vx, vy, fromLeft,
+      kill, cannon, big,
+      damage: kill ? 999 : cannon ? 5 : big ? 2 : 1,
+      len:    kill ? 80  : cannon ? 60 : big ? 44 : 28,
+      hitR:   kill ? 20  : cannon ? 16 : big ? 11 : 7,
+    });
+  }
+
+  function spawnArrow() {
+    spawnSingleArrow(true);
+    spawnSingleArrow(false);
+  }
+
+  function getArrowInterval() {
+    const t = frameCount / 60;
+    return Math.max(18, 80 - t * 0.7);
+  }
+
+  // ─── Particles ───────────────────────────────────────────────────────────
+  let particles = [];
+
+  function spawnParticles(x, y, color, count = 12) {
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 1.5 + Math.random() * 4;
+      particles.push({
+        x, y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 1,
+        decay: 0.025 + Math.random() * 0.03,
+        radius: 3 + Math.random() * 4,
+        color,
+      });
+    }
+  }
+
+  // ─── Stars (background) ──────────────────────────────────────────────────
+  let stars = [];
+  function initStars() {
+    stars = [];
+    for (let i = 0; i < 120; i++) {
+      stars.push({
+        x: Math.random() * W,
+        y: Math.random() * H,
+        r: 0.5 + Math.random() * 1.5,
+        a: 0.3 + Math.random() * 0.7,
+        twinkle: Math.random() * Math.PI * 2,
+      });
+    }
+  }
+
+  // ─── Archers (NPCs) ──────────────────────────────────────────────────────
+  let archers = [];
+
+  function initArchers() {
+    archers = [
+      { side: 'left',  x: 14, y: H * 0.25, shootFrame: 0, charging: 0 },
+      { side: 'left',  x: 14, y: H * 0.65, shootFrame: 40, charging: 0 },
+      { side: 'right', x: W - 14, y: H * 0.35, shootFrame: 20, charging: 0 },
+      { side: 'right', x: W - 14, y: H * 0.75, shootFrame: 60, charging: 0 },
+    ];
+  }
+
+  // ─── Clouds (scrolling) ──────────────────────────────────────────────────
+  let clouds = [];
+  function initClouds() {
+    clouds = [];
+    for (let i = 0; i < 6; i++) {
+      clouds.push({
+        x: Math.random() * W,
+        y: 30 + Math.random() * (H - 100),
+        r: 40 + Math.random() * 60,
+        speed: 0.15 + Math.random() * 0.3,
+        alpha: 0.04 + Math.random() * 0.06,
+      });
+    }
+  }
+
+  // ─── Draw helpers ────────────────────────────────────────────────────────
+  function drawBackground() {
+    // Sky gradient
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0,   '#070e2b');
+    grad.addColorStop(0.5, '#0d1f4a');
+    grad.addColorStop(1,   '#1a3a2a');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+
+    // Stars
+    const t = Date.now() / 1000;
+    stars.forEach(s => {
+      const alpha = s.a * (0.6 + 0.4 * Math.sin(t * 1.2 + s.twinkle));
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+      ctx.fill();
+    });
+
+    // Clouds
+    clouds.forEach(c => {
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(100,160,255,${c.alpha})`;
+      ctx.fill();
+    });
+
+    // Ground line
+    ctx.fillStyle = 'rgba(40,80,40,0.5)';
+    ctx.fillRect(0, H - 14, W, 14);
+    ctx.fillStyle = 'rgba(60,120,60,0.4)';
+    ctx.fillRect(0, H - 14, W, 4);
+  }
+
+  function drawBird() {
+    const { x, y, vx, invincible, skillActive } = BIRD;
+
+    // Post-hit flash (only flash when NOT using skill)
+    if (invincible > 0 && skillActive === 0 && Math.floor(invincible / 5) % 2 === 0) return;
+
+    // Tilt based on horizontal velocity
+    const tilt = Math.max(-0.35, Math.min(0.35, vx * 0.045));
+
+    const r = BIRD.radius;
+
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(tilt);
+    ctx.translate(-x, -y);
+
+    // Shadow
+    ctx.beginPath();
+    ctx.ellipse(x, y + r + 6, r * 0.7, 5, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.fill();
+
+    // Body
+    const bodyGrad = ctx.createRadialGradient(x - 4, y - 4, 2, x, y, r);
+    bodyGrad.addColorStop(0, '#fff176');
+    bodyGrad.addColorStop(0.6, '#f9a825');
+    bodyGrad.addColorStop(1, '#e65100');
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fillStyle = bodyGrad;
+    ctx.fill();
+
+    // Wing (animated)
+    const wingFlap = Math.sin(Date.now() / 80) * 0.4;
+    ctx.save();
+    ctx.translate(x - 6, y + 2);
+    ctx.rotate(-0.4 + wingFlap);
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 12, 7, 0, 0, Math.PI * 2);
+    ctx.fillStyle = '#ef6c00';
+    ctx.fill();
+    ctx.restore();
+
+    // Eye
+    ctx.beginPath();
+    ctx.arc(x + 8, y - 5, 5, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(x + 9, y - 5, 3, 0, Math.PI * 2);
+    ctx.fillStyle = '#1a1a2e';
+    ctx.fill();
+    // Eye shine
+    ctx.beginPath();
+    ctx.arc(x + 10, y - 6, 1, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff';
+    ctx.fill();
+
+    // Beak
+    ctx.beginPath();
+    ctx.moveTo(x + r, y - 2);
+    ctx.lineTo(x + r + 10, y);
+    ctx.lineTo(x + r, y + 3);
+    ctx.closePath();
+    ctx.fillStyle = '#ff8f00';
+    ctx.fill();
+
+    // Glow ring – blue for hit-invincible, gold for skill
+    if (skillActive > 0) {
+      const pulse = 0.6 + 0.4 * Math.sin(Date.now() / 80);
+      // Big golden aura
+      ctx.beginPath();
+      ctx.arc(x, y, r + 10 + 4 * pulse, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(255,220,50,${0.8 * pulse})`;
+      ctx.lineWidth = 4;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(x, y, r + 4, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(255,240,100,${pulse})`;
+      ctx.lineWidth = 3;
+      ctx.stroke();
+    } else if (BIRD.skill2Active > 0) {
+      const pulse = 0.6 + 0.4 * Math.sin(Date.now() / 80);
+      ctx.beginPath();
+      ctx.arc(x, y, r + 10 + 4 * pulse, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(255,100,150,${0.8 * pulse})`;
+      ctx.lineWidth = 4;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(x, y, r + 4, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(255,150,180,${pulse})`;
+      ctx.lineWidth = 3;
+      ctx.stroke();
+    } else if (invincible > 0) {
+      ctx.beginPath();
+      ctx.arc(x, y, r + 4, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(100,200,255,0.7)';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+    }
+
+    ctx.restore(); // end tilt transform
+  }
+
+  function drawArrow(a) {
+    if (a.meteor) {
+      ctx.save();
+      ctx.translate(a.x, a.y);
+      ctx.rotate(Math.atan2(a.vy, a.vx));
+      
+      // Meteor tail
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(-a.hitR * 2.5, -a.hitR * 0.5);
+      ctx.lineTo(-a.hitR * 3.5, 0);
+      ctx.lineTo(-a.hitR * 2.5, a.hitR * 0.5);
+      ctx.fillStyle = 'rgba(255, 100, 0, 0.7)';
+      ctx.fill();
+
+      // Meteor body
+      ctx.beginPath();
+      ctx.arc(0, 0, a.hitR, 0, Math.PI * 2);
+      ctx.fillStyle = '#ff5722';
+      ctx.shadowBlur = 20;
+      ctx.shadowColor = '#ff3300';
+      ctx.fill();
+      
+      // Texture
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = '#5c1a06';
+      ctx.beginPath();
+      ctx.arc(-a.hitR*0.2, -a.hitR*0.2, a.hitR * 0.3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(a.hitR*0.3, a.hitR*0.4, a.hitR * 0.2, 0, Math.PI * 2);
+      ctx.fill();
+      
+      ctx.restore();
+      return;
+    }
+
+    const L   = a.len;
+    // Per-tier visuals
+    let sw, hw, hl, fw, shaftColor, headColor, featherCol, glowColor;
+    if (a.kill) {
+      sw = 12; hw = 18; hl = 30; fw = 16;
+      shaftColor = '#0a0a0a'; headColor = '#000000'; featherCol = '#1a0000';
+      glowColor  = 'rgba(255,0,0,0.95)';
+    } else if (a.cannon) {
+      sw = 9; hw = 13; hl = 22; fw = 12;
+      shaftColor = '#2a002e'; headColor = '#9c27b0'; featherCol = '#6a0080';
+      glowColor  = 'rgba(170,0,255,0.9)';
+    } else if (a.big) {
+      sw = 5; hw = 8; hl = 16; fw = 8;
+      shaftColor = '#8B2B00'; headColor = '#ff5722'; featherCol = '#bf360c';
+      glowColor  = 'rgba(255,87,34,0.7)';
+    } else {
+      sw = 3; hw = 5; hl = 10; fw = 5;
+      shaftColor = '#c8a870'; headColor = '#9ecfff'; featherCol = '#e53935';
+      glowColor  = 'rgba(158,207,255,0.6)';
+    }
+
+    ctx.save();
+    ctx.translate(a.x, a.y);
+    ctx.rotate(Math.atan2(a.vy, a.vx));
+
+    // Glow
+    ctx.shadowBlur  = a.kill ? 35 : a.cannon ? 22 : a.big ? 14 : 8;
+    ctx.shadowColor = glowColor;
+
+    // Shaft
+    ctx.beginPath();
+    ctx.moveTo(-L / 2, 0);
+    ctx.lineTo(L / 2, 0);
+    ctx.strokeStyle = shaftColor;
+    ctx.lineWidth = sw;
+    ctx.stroke();
+
+    // Kill arrow pulsing core
+    if (a.kill) {
+      const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 40);
+      ctx.globalAlpha = 0.8 * pulse;
+      ctx.beginPath();
+      ctx.moveTo(-L / 2, 0);
+      ctx.lineTo(L / 2 - hl, 0);
+      ctx.strokeStyle = '#ff0000';
+      ctx.lineWidth = sw - 6;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    } else if (a.cannon) {
+      ctx.globalAlpha = 0.55;
+      ctx.beginPath();
+      ctx.moveTo(-L / 2, 0);
+      ctx.lineTo(L / 2 - hl, 0);
+      ctx.strokeStyle = '#7b1fa2';
+      ctx.lineWidth = sw - 3;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+
+    // Head
+    ctx.beginPath();
+    ctx.moveTo(L / 2,           0);
+    ctx.lineTo(L / 2 - hl,    -hw);
+    ctx.lineTo(L / 2 - hl * 0.6, 0);
+    ctx.lineTo(L / 2 - hl,     hw);
+    ctx.closePath();
+    ctx.fillStyle = headColor;
+    ctx.fill();
+
+    // Feathers
+    ctx.beginPath();
+    ctx.moveTo(-L / 2,      0);
+    ctx.lineTo(-L / 2 + fw, -fw);
+    ctx.moveTo(-L / 2,      0);
+    ctx.lineTo(-L / 2 + fw,  fw);
+    ctx.strokeStyle = featherCol;
+    ctx.lineWidth = a.kill ? 6 : a.cannon ? 4 : a.big ? 3 : 2;
+    ctx.stroke();
+
+    // Badges
+    if (a.kill) {
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = '#ff0000';
+      ctx.font = 'bold 18px serif';
+      ctx.textAlign   = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('💀', -5, 0);
+      ctx.shadowBlur = 0;
+    } else if (a.cannon) {
+      ctx.shadowBlur = 0;
+      ctx.font = 'bold 13px serif';
+      ctx.textAlign   = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.globalAlpha = 0.9;
+      ctx.fillText('☠️', 0, -14);
+      ctx.globalAlpha = 1;
+    } else if (a.big) {
+      // Big-arrow badge stripe
+      ctx.globalAlpha = 0.35;
+      ctx.beginPath();
+      ctx.rect(-L / 2 + fw, -sw / 2, L - fw - hl * 0.6, sw);
+      ctx.fillStyle = '#ff8a50';
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+
+    ctx.restore();
+  }
+
+  function drawArcher(a) {
+    const flip = a.side === 'right' ? -1 : 1;
+    const { x, y } = a;
+
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(flip, 1);
+
+    // Body
+    ctx.fillStyle = '#3d2b1f';
+    ctx.beginPath();
+    ctx.roundRect(0, -18, 22, 36, 5);
+    ctx.fill();
+
+    // Head
+    const headGrad = ctx.createRadialGradient(11, -26, 3, 11, -26, 12);
+    headGrad.addColorStop(0, '#f5cba7');
+    headGrad.addColorStop(1, '#d4a574');
+    ctx.beginPath();
+    ctx.arc(11, -26, 12, 0, Math.PI * 2);
+    ctx.fillStyle = headGrad;
+    ctx.fill();
+
+    // Hat
+    ctx.fillStyle = '#1a3a2a';
+    ctx.beginPath();
+    ctx.ellipse(11, -36, 14, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillRect(4, -54, 14, 20);
+
+    // Eye
+    ctx.beginPath();
+    ctx.arc(17, -27, 2.5, 0, Math.PI * 2);
+    ctx.fillStyle = '#1a1a2e';
+    ctx.fill();
+
+    // Arms
+    ctx.strokeStyle = '#f5cba7';
+    ctx.lineWidth = 5;
+    ctx.lineCap = 'round';
+    // Draw arm
+    ctx.beginPath();
+    ctx.moveTo(20, -10);
+    ctx.lineTo(38, -5);
+    ctx.stroke();
+
+    // Bow
+    ctx.strokeStyle = '#8B5E3C';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(40, -5, 20, -1.2, 1.2);
+    ctx.stroke();
+
+    // Bowstring (animated when charging)
+    const pullback = a.charging * 8;
+    ctx.strokeStyle = 'rgba(220,220,200,0.8)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(40, -5 - 20 * Math.sin(1.2));
+    ctx.lineTo(40 - pullback, -5);
+    ctx.lineTo(40, -5 + 20 * Math.sin(1.2));
+    ctx.stroke();
+
+    // Legs
+    ctx.fillStyle = '#2d4a3e';
+    ctx.fillRect(3, 18, 8, 20);
+    ctx.fillRect(13, 18, 8, 20);
+
+    ctx.restore();
+  }
+
+  function drawParticles() {
+    particles.forEach(p => {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.radius * p.life, 0, Math.PI * 2);
+      ctx.fillStyle = p.color.replace('1)', `${p.life})`);
+      ctx.fill();
+    });
+  }
+
+  // ─── Update ──────────────────────────────────────────────────────────────
+  function updateBird(dt) {
+    if (jumpQueued) {
+      BIRD.vy = BIRD.JUMP;
+      jumpQueued = false;
+      spawnParticles(BIRD.x - 10, BIRD.y + 10, 'rgba(100,200,255,', 5);
+    }
+
+    // Horizontal movement
+    if (keys.left)  BIRD.vx -= BIRD.ACCEL;
+    if (keys.right) BIRD.vx += BIRD.ACCEL;
+    // Apply wind force to bird
+    BIRD.vx += windForce * 0.08;
+    BIRD.vx *= BIRD.FRICTION;
+    BIRD.vx = Math.max(-BIRD.MAX_VX * 1.5, Math.min(BIRD.MAX_VX * 1.5, BIRD.vx));
+    BIRD.x += BIRD.vx;
+
+    // Vertical
+    BIRD.vy = Math.min(BIRD.vy + BIRD.GRAVITY, BIRD.MAX_VY);
+    BIRD.y += BIRD.vy;
+
+    if (BIRD.invincible > 0) BIRD.invincible--;
+
+    // Left / right wall clamp
+    if (BIRD.x - BIRD.radius < 40) {
+      BIRD.x = 40 + BIRD.radius;
+      BIRD.vx = Math.abs(BIRD.vx) * 0.4;
+    }
+    if (BIRD.x + BIRD.radius > W - 40) {
+      BIRD.x = W - 40 - BIRD.radius;
+      BIRD.vx = -Math.abs(BIRD.vx) * 0.4;
+    }
+    // Ceiling bounce
+    if (BIRD.y - BIRD.radius < 0) {
+      BIRD.y = BIRD.radius;
+      BIRD.vy = Math.abs(BIRD.vy) * 0.5;
+    }
+    // Floor
+    if (BIRD.y + BIRD.radius > H - 14) {
+      BIRD.y = H - 14 - BIRD.radius;
+      BIRD.vy = -Math.abs(BIRD.vy) * 0.5;
+    }
+  }
+
+  function updateArrows() {
+    // Spawn
+    if (frameCount >= nextArrowFrame) {
+      spawnArrow();
+      nextArrowFrame = frameCount + getArrowInterval();
+      // Update archer charging animation
+      const lIdx = Math.floor(Math.random() * 2);
+      const rIdx = 2 + Math.floor(Math.random() * 2);
+      if (archers[lIdx]) archers[lIdx].charging = 1;
+      if (archers[rIdx]) archers[rIdx].charging = 1;
+      setTimeout(() => { 
+        if(archers[lIdx]) archers[lIdx].charging = 0; 
+        if(archers[rIdx]) archers[rIdx].charging = 0; 
+      }, 200);
+    }
+
+    // Move & check OOB / collision
+    arrows = arrows.filter(a => {
+      // Apply wind to arrows (lighter effect)
+      a.vx += windForce * 0.03;
+      a.x += a.vx;
+      a.y += a.vy;
+
+      // Remove if out of bounds
+      if (a.x < -60 || a.x > W + 60 || a.y < -60 || a.y > H + 60) return false;
+
+      // Collision with bird
+      if (BIRD.skill2Active > 0) {
+        const dx = a.x - BIRD.x;
+        const dy = a.y - BIRD.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < BIRD.radius + a.hitR + 10) {
+          spawnParticles(a.x, a.y, 'rgba(255,100,150,', a.big ? 16 : 10);
+          const healAmount = a.kill ? 5 : (a.damage || 1);
+          lives = Math.min(MAX_LIVES, lives + healAmount);
+          updateLivesHud();
+          showFloatText(BIRD.x, BIRD.y - 30, `+${healAmount} ❤️ 汲血!`, "#ff88aa");
+          return false;
+        }
+      } else if (BIRD.invincible === 0 && BIRD.skillActive === 0) {
+        const dx = a.x - BIRD.x;
+        const dy = a.y - BIRD.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < BIRD.radius + a.hitR) {
+          // Hit! damage depends on arrow tier
+          const hitColor = a.kill ? 'rgba(255,0,0,' : a.cannon ? 'rgba(180,0,255,' : a.big ? 'rgba(255,50,0,' : 'rgba(255,80,80,';
+          const hitCount = a.kill ? 40 : a.cannon ? 28 : a.big ? 20 : 14;
+          spawnParticles(a.x, a.y, hitColor, hitCount);
+          spawnParticles(BIRD.x, BIRD.y, 'rgba(255,200,50,', 8);
+          lives = Math.max(0, lives - a.damage);
+          BIRD.invincible = 90;
+          updateLivesHud();
+          const dmgColor = a.kill ? '#ff0000' : a.cannon ? '#e040fb' : a.big ? '#ff5722' : '#ff8888';
+          const txt = a.kill ? 'FATAL! 💀' : `-${a.damage} ❤️`;
+          showFloatText(BIRD.x, BIRD.y - 30, txt, dmgColor);
+          if (lives <= 0) { setTimeout(() => endGame(), 300); }
+          return false;
+        }
+      } else if (BIRD.skillActive > 0) {
+        // Skill blocks arrow – arrow shatters
+        const dx = a.x - BIRD.x;
+        const dy = a.y - BIRD.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < BIRD.radius + a.hitR + 10) {
+          spawnParticles(a.x, a.y, 'rgba(255,220,50,', a.big ? 16 : 10);
+          return false;
+        }
+      }
+      return true;
+    });
+  }
+
+  function updateParticles() {
+    particles = particles.filter(p => {
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += 0.08;
+      p.life -= p.decay;
+      return p.life > 0;
+    });
+  }
+
+  function updateClouds() {
+    clouds.forEach(c => {
+      c.x += c.speed;
+      if (c.x - c.r > W) c.x = -c.r;
+    });
+  }
+
+  // ─── Random Events ─────────────────────────────────────────────────────────
+  // Event types: null | 'arrowStorm' | 'foodRain' | 'lightning' | 'darkness' | 'wind' | 'magnet'
+  let eventCooldownFrame = 300;    // first possible event after 5 sec
+  let activeEvent = null;          // currently displayed warning/event
+  let eventWarningFrames = 0;      // countdown for warning banner
+  let eventBurstFrames  = 0;       // countdown for burst phase
+  let eventBurstTick    = 0;       // frames between burst ticks
+  let pendingEvent      = null;    // event type queued after warning
+
+  // Lightning storm state
+  let lightningFlashes = [];       // active lightning flashes on screen
+
+  // Wind state
+  let windForce = 0;               // current wind force (can be negative = left)
+  let windTarget = 0;              // target wind force
+
+  // Darkness state
+  let darknessActive = false;
+
+  // Magnet state
+  let magnetActive = false;
+
+  // Fire pit state
+  let firePits = [];
+
+  function resetEvents() {
+    eventCooldownFrame = 300;
+    activeEvent        = null;
+    eventWarningFrames = 0;
+    eventBurstFrames   = 0;
+    eventBurstTick     = 0;
+    pendingEvent       = null;
+    lightningFlashes   = [];
+    windForce          = 0;
+    windTarget         = 0;
+    darknessActive     = false;
+    magnetActive       = false;
+    firePits           = [];
+  }
+
+  // Fire one arrow aimed at bird during storm
+  function stormArrow() {
+    const roll = Math.random();
+    const kill   = roll < 0.03;            // 3% kill
+    const cannon = !kill && roll < 0.12;   // 12% cannon during storm
+    const big    = !kill && !cannon && roll < 0.45; // 45% big during storm
+    const fromLeft = Math.random() < 0.5;
+    const x  = fromLeft ? -10 : W + 10;
+    const aimY = BIRD.y + (Math.random() - 0.5) * 80;
+    const baseSpeed = kill ? 9.0 : cannon ? 2.5 : big ? 4.5 : 6.5;
+    const speed = baseSpeed + Math.random() * 2;
+    const angle = Math.atan2(aimY - H / 2, fromLeft ? W : -W) + (Math.random() - 0.5) * 0.3;
+    arrows.push({
+      x, y: 60 + Math.random() * (H - 120),
+      vx: Math.cos(angle) * speed * (fromLeft ? 1 : -1),
+      vy: Math.sin(angle) * speed,
+      kill, cannon, big,
+      damage: kill ? 999 : cannon ? 5 : big ? 2 : 1,
+      len:    kill ? 80  : cannon ? 60 : big ? 44 : 28,
+      hitR:   kill ? 20  : cannon ? 16 : big ? 11 : 7,
+    });
+  }
+
+  // Drop one food from top during food rain
+  function rainFood() {
+    const big = Math.random() < 0.35;
+    foods.push({
+      x: 60 + Math.random() * (W - 120),
+      y: -20,
+      big,
+      emoji: big
+        ? FOOD_BIG[Math.floor(Math.random()   * FOOD_BIG.length)]
+        : FOOD_SMALL[Math.floor(Math.random() * FOOD_SMALL.length)],
+      heal: big ? 3 : 1,
+      r:    big ? 26 : 16,
+      fs:   big ? 38 : 22,
+      life: 480,
+      bob:  Math.random() * Math.PI * 2,
+      vy:   1.5 + Math.random() * 2,   // falling speed
+      falling: true,
+    });
+  }
+
+  // Spawn a lightning flash effect
+  function spawnLightningFlash(x, y) {
+    const segs = [];
+    let cx = x, cy = y;
+    const totalLen = 150 + Math.random() * 200;
+    let remaining = totalLen;
+    while (remaining > 0) {
+      const segLen = 20 + Math.random() * 40;
+      const angle = (Math.PI / 2) + (Math.random() - 0.5) * 1.2;
+      const nx = cx + Math.cos(angle) * segLen;
+      const ny = cy + Math.sin(angle) * segLen;
+      segs.push({ x1: cx, y1: cy, x2: nx, y2: ny });
+      cx = nx; cy = ny;
+      remaining -= segLen;
+    }
+    lightningFlashes.push({ segs, life: 1, decay: 0.1 + Math.random() * 0.15 });
+  }
+
+  // Fire FAST arrow during lightning storm (speed multiplied)
+  function lightningArrow() {
+    const big = Math.random() < 0.4;
+    const fromLeft = Math.random() < 0.5;
+    const x = fromLeft ? -10 : W + 10;
+    const aimY = BIRD.y + (Math.random() - 0.5) * 60;
+    const speed = (big ? 7 : 11) + Math.random() * 4;  // Much faster!
+    const angle = Math.atan2(aimY - H / 2, fromLeft ? W : -W) + (Math.random() - 0.5) * 0.25;
+    arrows.push({
+      x, y: 60 + Math.random() * (H - 120),
+      vx: Math.cos(angle) * speed * (fromLeft ? 1 : -1),
+      vy: Math.sin(angle) * speed,
+      kill: false, cannon: false, big,
+      damage: big ? 2 : 1,
+      len: big ? 44 : 28,
+      hitR: big ? 11 : 7,
+      lightning: true,  // mark for electric visual
+    });
+  }
+
+  function spawnMeteor() {
+    const big = Math.random() < 0.4;
+    const x = 40 + Math.random() * (W - 80);
+    const y = -60;
+    const aimX = x + (Math.random() - 0.5) * 200;
+    const aimY = H;
+    const speed = big ? 5 : 8;
+    const angle = Math.atan2(aimY - y, aimX - x);
+    arrows.push({
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      kill: false, cannon: false, big, meteor: true,
+      damage: big ? 3 : 2,
+      len: 0,
+      hitR: big ? 28 : 16,
+    });
+  }
+
+  function spawnFirePit() {
+    firePits.push({
+      x: 80 + Math.random() * (W - 160),
+      width: 100 + Math.random() * 80,
+      life: 240,
+      warning: 60,
+    });
+  }
+
+  function updateFirePits() {
+    firePits = firePits.filter(fp => {
+      if (fp.warning > 0) fp.warning--;
+      else fp.life--;
+      
+      if (fp.warning === 0 && fp.life > 0) {
+        if (BIRD.invincible === 0 && BIRD.skillActive === 0) {
+          if (BIRD.y + BIRD.radius > H - 30) {
+            if (Math.abs(BIRD.x - fp.x) < fp.width / 2 + BIRD.radius) {
+              lives = Math.max(0, lives - 1);
+              BIRD.invincible = 60;
+              updateLivesHud();
+              showFloatText(BIRD.x, BIRD.y - 30, "-1 ❤️", "#ff5500");
+              spawnParticles(BIRD.x, BIRD.y, 'rgba(255,100,0,', 10);
+              if (lives <= 0) { setTimeout(() => endGame(), 300); }
+            }
+          }
+        }
+      }
+      return fp.warning > 0 || fp.life > 0;
+    });
+  }
+
+  function drawFirePits() {
+    firePits.forEach(fp => {
+      const gY = H - 14;
+      ctx.save();
+      if (fp.warning > 0) {
+        ctx.globalAlpha = 0.5 + 0.3 * Math.sin(fp.warning * 0.3);
+        ctx.fillStyle = '#ff8800';
+        ctx.fillRect(fp.x - fp.width/2, gY - 2, fp.width, 2);
+      } else {
+        ctx.globalAlpha = Math.min(1, fp.life / 20);
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = '#ff2200';
+        ctx.fillStyle = '#ff3300';
+        ctx.beginPath();
+        ctx.ellipse(fp.x, gY, fp.width/2, 6, 0, 0, Math.PI*2);
+        ctx.fill();
+        ctx.fillStyle = '#ff9900';
+        const t = Date.now() / 100;
+        for (let i = 0; i < 7; i++) {
+          const fx = fp.x - fp.width/2 + (i + 0.5) * (fp.width / 7);
+          const fh = 15 + Math.sin(t + i) * 10;
+          ctx.beginPath();
+          ctx.moveTo(fx - 6, gY);
+          ctx.lineTo(fx + Math.sin(t*2 + i)*5, gY - fh);
+          ctx.lineTo(fx + 6, gY);
+          ctx.fill();
+        }
+      }
+      ctx.restore();
+    });
+  }
+
+  function triggerEvent(type) {
+    activeEvent        = type;
+    eventWarningFrames = 120;  // 2 sec warning
+    pendingEvent       = type;
+    eventBurstFrames   = 0;
+    eventBurstTick     = 0;
+
+    // Instant state changes for non-burst events
+    darknessActive = false;
+    magnetActive   = false;
+  }
+
+  function updateEvents() {
+    // Schedule next event randomly
+    if (frameCount >= eventCooldownFrame && !activeEvent) {
+      // Random interval 10-22 seconds
+      eventCooldownFrame = frameCount + 600 + Math.floor(Math.random() * 720);
+      const r = Math.random();
+      let pick;
+      if      (r < 0.20) pick = 'arrowStorm';
+      else if (r < 0.35) pick = 'foodRain';
+      else if (r < 0.50) pick = 'lightning';
+      else if (r < 0.60) pick = 'darkness';
+      else if (r < 0.70) pick = 'wind';
+      else if (r < 0.80) pick = 'magnet';
+      else if (r < 0.90) pick = 'firePit';
+      else               pick = 'meteorStorm';
+      triggerEvent(pick);
+    }
+
+    // Warning phase
+    if (eventWarningFrames > 0) {
+      eventWarningFrames--;
+      if (eventWarningFrames === 0) {
+        // Start burst / activate persistent events
+        if (pendingEvent === 'arrowStorm') {
+          eventBurstFrames = 180;  // ~3 sec
+          eventBurstTick   = 0;
+        } else if (pendingEvent === 'foodRain') {
+          eventBurstFrames = 60;
+          eventBurstTick   = 0;
+        } else if (pendingEvent === 'lightning') {
+          eventBurstFrames = 240;  // ~4 sec
+          eventBurstTick   = 0;
+        } else if (pendingEvent === 'darkness') {
+          eventBurstFrames = 360;  // ~6 sec darkness
+          eventBurstTick   = 0;
+          darknessActive   = true;
+        } else if (pendingEvent === 'wind') {
+          eventBurstFrames = 300;  // ~5 sec wind
+          eventBurstTick   = 0;
+          windTarget = (Math.random() < 0.5 ? 1 : -1) * (2.5 + Math.random() * 2.5);
+        } else if (pendingEvent === 'magnet') {
+          eventBurstFrames = 300;  // ~5 sec magnet
+          eventBurstTick   = 0;
+          magnetActive     = true;
+        } else if (pendingEvent === 'firePit') {
+          eventBurstFrames = 300;  // 5 sec
+          eventBurstTick   = 0;
+        } else if (pendingEvent === 'meteorStorm') {
+          eventBurstFrames = 240;  // 4 sec
+          eventBurstTick   = 0;
+        }
+      }
+      return;
+    }
+
+    // Burst / active phase
+    if (eventBurstFrames > 0) {
+      eventBurstFrames--;
+      eventBurstTick++;
+
+      if (activeEvent === 'arrowStorm') {
+        if (eventBurstTick % 4 === 0) stormArrow();
+      } else if (activeEvent === 'foodRain') {
+        if (eventBurstTick % 5 === 0) rainFood();
+      } else if (activeEvent === 'lightning') {
+        // Fast arrows every 7 frames, lightning flashes
+        if (eventBurstTick % 7 === 0) lightningArrow();
+        if (eventBurstTick % 12 === 0) {
+          spawnLightningFlash(Math.random() * W, -10);
+        }
+      } else if (activeEvent === 'wind') {
+        // Gradually ease wind force toward target
+        windForce += (windTarget - windForce) * 0.05;
+        // Apply wind to bird and arrows already in-flight (done in their update functions)
+      } else if (activeEvent === 'firePit') {
+        if (eventBurstTick % 60 === 0) spawnFirePit();
+      } else if (activeEvent === 'meteorStorm') {
+        if (eventBurstTick % 12 === 0) spawnMeteor();
+      }
+      // darkness and magnet are handled via flags; no per-frame burst action here
+
+      // Fade out wind at end
+      if (eventBurstFrames <= 30 && activeEvent === 'wind') {
+        windTarget = 0;
+      }
+
+      if (eventBurstFrames === 0) {
+        activeEvent    = null;
+        darknessActive = false;
+        magnetActive   = false;
+        windTarget     = 0;
+      }
+    }
+
+    // Always update lightning flashes and wind decay even outside burst
+    lightningFlashes = lightningFlashes.filter(lf => {
+      lf.life -= lf.decay;
+      return lf.life > 0;
+    });
+    windForce += (windTarget - windForce) * 0.03;
+  }
+
+  // ─── Draw lightning flashes ────────────────────────────────────────────────
+  function drawLightningFlashes() {
+    lightningFlashes.forEach(lf => {
+      ctx.save();
+      ctx.globalAlpha = lf.life;
+      ctx.strokeStyle = `rgba(200,230,255,${lf.life})`;
+      ctx.lineWidth = 3;
+      ctx.shadowBlur = 20;
+      ctx.shadowColor = '#88ccff';
+      lf.segs.forEach(seg => {
+        ctx.beginPath();
+        ctx.moveTo(seg.x1, seg.y1);
+        ctx.lineTo(seg.x2, seg.y2);
+        ctx.stroke();
+      });
+      // thin bright core
+      ctx.strokeStyle = `rgba(255,255,255,${lf.life})`;
+      ctx.lineWidth = 1;
+      ctx.shadowBlur = 4;
+      lf.segs.forEach(seg => {
+        ctx.beginPath();
+        ctx.moveTo(seg.x1, seg.y1);
+        ctx.lineTo(seg.x2, seg.y2);
+        ctx.stroke();
+      });
+      ctx.restore();
+    });
+  }
+
+  // ─── Draw darkness vignette ────────────────────────────────────────────────
+  function drawDarkness() {
+    if (!darknessActive) return;
+    const bx = BIRD.x, by = BIRD.y;
+    const lightR = 120;
+    // Full black overlay
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.88)';
+    ctx.fillRect(0, 0, W, H);
+    // Cut a radial light cone around the bird using destination-out
+    const grad = ctx.createRadialGradient(bx, by, 0, bx, by, lightR);
+    grad.addColorStop(0,   'rgba(0,0,0,1)');
+    grad.addColorStop(0.6, 'rgba(0,0,0,0.7)');
+    grad.addColorStop(1,   'rgba(0,0,0,0)');
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.beginPath();
+    ctx.arc(bx, by, lightR, 0, Math.PI * 2);
+    ctx.fillStyle = grad;
+    ctx.fill();
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.restore();
+  }
+
+  // ─── Wind visual ──────────────────────────────────────────────────────────
+  let windStreaks = [];
+  function updateWindStreaks() {
+    if (Math.abs(windForce) > 0.3 && frameCount % 3 === 0) {
+      windStreaks.push({
+        x: windForce > 0 ? -20 : W + 20,
+        y: 30 + Math.random() * (H - 60),
+        len: 40 + Math.random() * 80,
+        speed: Math.abs(windForce) * 6 + 3,
+        life: 1,
+        dir: windForce > 0 ? 1 : -1,
+      });
+    }
+    windStreaks = windStreaks.filter(ws => {
+      ws.x += ws.speed * ws.dir;
+      ws.life -= 0.04;
+      return ws.life > 0 && ws.x > -200 && ws.x < W + 200;
+    });
+  }
+  function drawWindStreaks() {
+    if (Math.abs(windForce) < 0.2) return;
+    ctx.save();
+    windStreaks.forEach(ws => {
+      ctx.globalAlpha = ws.life * 0.4;
+      ctx.strokeStyle = 'rgba(180,220,255,0.9)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(ws.x, ws.y);
+      ctx.lineTo(ws.x - ws.len * ws.dir, ws.y);
+      ctx.stroke();
+    });
+    ctx.restore();
+  }
+
+  // ─── Magnet visual & pull ────────────────────────────────────────────────
+  function updateMagnet() {
+    if (!magnetActive) return;
+    const PULL_STRENGTH = 3.5;
+    const PUSH_ARROWS   = 2.0;
+    // Pull ALL foods toward bird
+    foods.forEach(f => {
+      const dx = BIRD.x - f.x;
+      const dy = BIRD.y - f.y;
+      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+      f.x += (dx / dist) * PULL_STRENGTH;
+      f.y += (dy / dist) * PULL_STRENGTH;
+    });
+    // Slowly push arrows away from bird (minor repulsion)
+    arrows.forEach(a => {
+      const dx = a.x - BIRD.x;
+      const dy = a.y - BIRD.y;
+      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+      if (dist < 250) {
+        a.vx += (dx / dist) * PUSH_ARROWS * (1 - dist / 250);
+        a.vy += (dy / dist) * PUSH_ARROWS * (1 - dist / 250);
+      }
+    });
+    // Magnet sparkle effect
+    if (frameCount % 5 === 0) {
+      const angle = Math.random() * Math.PI * 2;
+      const r = 80 + Math.random() * 60;
+      spawnParticles(
+        BIRD.x + Math.cos(angle) * r,
+        BIRD.y + Math.sin(angle) * r,
+        'rgba(80,200,255,', 2
+      );
+    }
+  }
+
+  // Draw event warning / active banner on canvas
+  function drawEventOverlay() {
+    // ─── Darkness (drawn before banner so banner is still visible)
+    drawDarkness();
+
+    if (!activeEvent) return;
+    const t = Date.now() / 1000;
+
+    // ─── Warning banner
+    if (eventWarningFrames > 0) {
+      const pulse = 0.5 + 0.5 * Math.sin(t * 10);
+      const events = {
+        arrowStorm: { bg: 'rgba(180,0,0,0.85)',   flash: `rgba(220,30,0,${0.18*pulse})`,   textColor: `rgba(255,220,50,${0.9+0.1*pulse})`,   text: '🟥 弓箭暴雨来袭！快躲避！ 🟥',     sub: 'ARROW STORM INCOMING',   shadow: '#ff4400' },
+        foodRain:   { bg: 'rgba(0,120,40,0.85)',   flash: `rgba(0,200,80,${0.12*pulse})`,   textColor: `rgba(180,255,100,${0.9+0.1*pulse})`,  text: '🟢 天降食物雨！快去吃！ 🟢',       sub: 'FOOD RAIN COMING',        shadow: '#00ff80' },
+        lightning:  { bg: 'rgba(20,20,100,0.90)',   flash: `rgba(180,210,255,${0.22*pulse})`, textColor: `rgba(200,230,255,${0.9+0.1*pulse})`, text: '⚡ 闪电风暴！箭矢大幅加速！ ⚡',    sub: 'LIGHTNING STORM!',       shadow: '#aaddff' },
+        darkness:   { bg: 'rgba(5,5,20,0.92)',      flash: `rgba(0,0,0,${0.4*pulse})`,        textColor: `rgba(200,160,255,${0.9+0.1*pulse})`, text: '🌑 黑暗降临！视野受限！ 🌑',       sub: 'DARKNESS INCOMING',       shadow: '#9966ff' },
+        wind:       { bg: 'rgba(20,60,100,0.85)',   flash: `rgba(80,160,255,${0.15*pulse})`,  textColor: `rgba(180,220,255,${0.9+0.1*pulse})`, text: '💨 强风来袭！注意飞行方向！ 💨',   sub: 'WIND STORM INCOMING',    shadow: '#5599ff' },
+        magnet:     { bg: 'rgba(0,80,120,0.85)',    flash: `rgba(80,200,255,${0.15*pulse})`,  textColor: `rgba(120,240,255,${0.9+0.1*pulse})`, text: '🧲 磁力场激活！食物被吸引！ 🧲', sub: 'MAGNET FIELD ACTIVE',    shadow: '#00ccff' },
+        firePit:    { bg: 'rgba(120,30,0,0.85)',    flash: `rgba(255,80,0,${0.15*pulse})`,    textColor: `rgba(255,150,50,${0.9+0.1*pulse})`,  text: '🔥 地面即将喷出烈焰！不要落地！ 🔥', sub: 'FIRE PITS ON GROUND',   shadow: '#ff5500' },
+        meteorStorm:{ bg: 'rgba(80,20,20,0.85)',    flash: `rgba(200,50,0,${0.2*pulse})`,     textColor: `rgba(255,120,80,${0.9+0.1*pulse})`,  text: '☄️ 陨石雨降临！注意上方！ ☄️',     sub: 'METEOR STORM INCOMING',   shadow: '#ff3300' },
+      };
+      const ev = events[activeEvent];
+      if (!ev) return;
+      ctx.fillStyle = ev.flash;
+      ctx.fillRect(0, 0, W, H);
+      ctx.save();
+      ctx.fillStyle = ev.bg;
+      ctx.fillRect(0, H / 2 - 42, W, 84);
+      ctx.font = `bold ${28 + 4 * pulse}px Nunito,sans-serif`;
+      ctx.fillStyle = ev.textColor;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.shadowBlur = 20;
+      ctx.shadowColor = ev.shadow;
+      ctx.fillText(ev.text, W / 2, H / 2 - 12);
+      ctx.font = 'bold 15px Nunito,sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,0.75)';
+      ctx.shadowBlur = 0;
+      ctx.fillText(ev.sub, W / 2, H / 2 + 22);
+      ctx.restore();
+    } else if (eventBurstFrames > 0) {
+      // Corner badge while event is active
+      ctx.save();
+      ctx.font = 'bold 13px Nunito,sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      const alpha = 0.7 + 0.3 * Math.sin(t * 6);
+      const badges = {
+        arrowStorm: [`rgba(255,60,0,${alpha})`,   '🟥 箭雨中...'],
+        foodRain:   [`rgba(80,255,130,${alpha})`,  '🟢 食物雨中...'],
+        lightning:  [`rgba(180,220,255,${alpha})`, '⚡ 闪电风暴中...'],
+        darkness:   [`rgba(180,140,255,${alpha})`, '🌑 暗夜中...'],
+        wind:       [`rgba(140,200,255,${alpha})`, `💨 强风 ${windForce > 0 ? '→' : '←'}`],
+        magnet:     [`rgba(80,220,255,${alpha})`,  '🧲 磁力中...'],
+        firePit:    [`rgba(255,120,50,${alpha})`,  '🔥 火坑喷发...'],
+        meteorStorm:[`rgba(255,100,80,${alpha})`,  '☄️ 陨石来袭...'],
+      };
+      const [col, lbl] = badges[activeEvent] || ['white', ''];
+      ctx.fillStyle = col;
+      ctx.fillText(lbl, 8, 70);
+      ctx.restore();
+    }
+
+    // ─── Lightning flashes (drawn on top)
+    drawLightningFlashes();
+  }
+
+  // ─── Scoring ─────────────────────────────────────────────────────────────
+  let scoreTimer = 0;
+  function updateScore() {
+    scoreTimer++;
+    if (scoreTimer >= 10) {
+      score++;
+      scoreTimer = 0;
+      document.getElementById('scoreHud').textContent = score;
+    }
+  }
+
+  const MAX_LIVES = 10;
+
+  // ─── HUD ─────────────────────────────────────────────────────────────────
+  function updateLivesHud() {
+    const bar = document.getElementById('livesBar');
+    bar.innerHTML = '';
+    for (let i = 0; i < MAX_LIVES; i++) {
+      const seg = document.createElement('div');
+      seg.className = 'hp-seg ' + (i < lives ? 'full' : 'empty');
+      bar.appendChild(seg);
+    }
+  }
+
+  // ─── Screens ─────────────────────────────────────────────────────────────
+  function showScreen(id) {
+    ['startScreen', 'gameOverScreen'].forEach(s => {
+      document.getElementById(s).classList.toggle('hidden', s !== id);
+    });
+    document.getElementById('hud').classList.toggle('hidden', id !== null);
+  }
+
+  // ─── Game lifecycle ───────────────────────────────────────────────────────
+  function startGame() {
+    state = 'playing';
+    score = 0;
+    lives = MAX_LIVES;
+    frameCount = 0;
+    scoreTimer = 0;
+    nextArrowFrame = 60;
+    arrows = [];
+    particles = [];
+    foods = [];
+    floatTexts = [];
+    nextFoodFrame = 180;
+    skillCooldown = 0;
+    skill2Cooldown = 0;
+    resetEvents();
+    resetBird();
+    initArchers();
+    updateLivesHud();
+    updateSkillHud();
+    document.getElementById('scoreHud').textContent = '0';
+    showScreen(null); // hide all screens, show HUD
+    document.getElementById('hud').classList.remove('hidden');
+  }
+
+  function endGame() {
+    state = 'gameover';
+    if (score > bestScore) bestScore = score;
+    document.getElementById('finalScore').textContent = score;
+    document.getElementById('bestScore').textContent = `最高分: ${bestScore}`;
+    showScreen('gameOverScreen');
+  }
+
+  // ─── Main Loop ────────────────────────────────────────────────────────────
+  function gameLoop(ts) {
+    animId = requestAnimationFrame(gameLoop);
+    const dt = Math.min((ts - lastTime) / 16.67, 3);
+    lastTime = ts;
+
+    drawBackground();
+
+    if (state === 'playing') {
+      frameCount++;
+      updateBird(dt);
+      updateArrows();
+      updateFood();
+      updateSkill();
+      updateEvents();
+      updateMagnet();
+      updateWindStreaks();
+      updateParticles();
+      updateClouds();
+      updateFirePits();
+      updateScore();
+    }
+
+    // Draw archers
+    if (state === 'playing' || state === 'gameover') {
+      archers.forEach(a => drawArcher(a));
+    }
+
+    // Draw food
+    if (state === 'playing') drawFood();
+
+    // Draw arrows
+    arrows.forEach(a => drawArrow(a));
+
+    // Draw particles
+    drawParticles();
+
+    // Draw wind streaks
+    if (state === 'playing') drawWindStreaks();
+
+    // Draw fire pits
+    if (state === 'playing') drawFirePits();
+
+    // Draw bird (only while playing)
+    if (state === 'playing') {
+      drawBird();
+    }
+
+    // Float texts
+    if (state === 'playing') updateDrawFloatTexts();
+
+    // Skill active screen tint
+    if (state === 'playing') {
+      if (BIRD.skillActive > 0) {
+        const p = 0.06 + 0.04 * Math.sin(Date.now() / 80);
+        ctx.fillStyle = `rgba(255,220,50,${p})`;
+        ctx.fillRect(0, 0, W, H);
+      } else if (BIRD.skill2Active > 0) {
+        const p = 0.06 + 0.04 * Math.sin(Date.now() / 80);
+        ctx.fillStyle = `rgba(255,100,150,${p})`;
+        ctx.fillRect(0, 0, W, H);
+      }
+    }
+
+    // Lightning bolt ambient tint during lightning event
+    if (state === 'playing' && activeEvent === 'lightning' && eventBurstFrames > 0) {
+      const lb = 0.03 + 0.03 * Math.sin(Date.now() / 40);
+      ctx.fillStyle = `rgba(130,180,255,${lb})`;
+      ctx.fillRect(0, 0, W, H);
+    }
+
+    // Event warning / burst overlay
+    if (state === 'playing') drawEventOverlay();
+
+    // Difficulty indicator – subtle pulse on high difficulty
+    if (state === 'playing' && score > 50 && BIRD.skillActive === 0) {
+      ctx.fillStyle = `rgba(255,50,50,${0.04 * Math.sin(Date.now() / 200)})`;
+      ctx.fillRect(0, 0, W, H);
+    }
+  }
+
+  // ─── Input events ─────────────────────────────────────────────────────────
+  function handleInput() {
+    if (state === 'playing') {
+      jumpQueued = true;
+    }
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.code === 'Space' || e.code === 'ArrowUp') {
+      e.preventDefault();
+      handleInput();
+    }
+    if (e.code === 'KeyE') {
+      e.preventDefault();
+      activateSkill(1);
+    }
+    if (e.code === 'KeyQ') {
+      e.preventDefault();
+      activateSkill(2);
+    }
+    // F12 to restart game (only when gameover, or anytime depending on what you prefer. Let's make it work anytime if it's F12)
+    if (e.code === 'F12') {
+      e.preventDefault();
+      startGame();
+    }
+    if (e.code === 'ArrowLeft'  || e.code === 'KeyA') { e.preventDefault(); keys.left  = true; }
+    if (e.code === 'ArrowRight' || e.code === 'KeyD') { e.preventDefault(); keys.right = true; }
+  });
+
+  document.addEventListener('keyup', e => {
+    if (e.code === 'ArrowLeft'  || e.code === 'KeyA') keys.left  = false;
+    if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = false;
+  });
+
+  canvas.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    // Double-tap detection for skill
+    const now = Date.now();
+    if (now - lastTapTime < 300) {
+      activateSkill();
+      lastTapTime = 0;
+    } else {
+      lastTapTime = now;
+      handleInput();
+    }
+  });
+
+  document.getElementById('startBtn').addEventListener('click', () => startGame());
+  document.getElementById('restartBtn').addEventListener('click', () => startGame());
+
+  // ─── Init ─────────────────────────────────────────────────────────────────
+  initStars();
+  initClouds();
+  initArchers();
+  showScreen('startScreen');
+  document.getElementById('hud').classList.add('hidden');
+
+  requestAnimationFrame(ts => {
+    lastTime = ts;
+    gameLoop(ts);
+  });
+</script>
+</body>
+</html>
